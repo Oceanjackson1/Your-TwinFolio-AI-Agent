@@ -1,0 +1,13 @@
+.DS_Store
+.env
+node_modules/
+ocr_cache/
+vector_stores/
+database.sqlite
+bot.log
+*.log
+
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+src/**/*.d.ts.map

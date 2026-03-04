@@ -1,0 +1,36 @@
+{
+  "name": "your-twinfolio",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && node src/bot.js",
+    "dev": "nodemon --watch src --ext ts --exec ts-node src/bot.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@types/node-fetch": "^2.6.13",
+    "@types/pdf-parse": "^1.1.5",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@langchain/community": "^1.1.21",
+    "@langchain/core": "^1.1.29",
+    "@langchain/deepseek": "^1.0.15",
+    "dotenv": "^17.3.1",
+    "hnswlib-node": "^3.0.0",
+    "pdf-parse": "^2.4.5",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "telegraf": "^4.16.3",
+    "tesseract.js": "^7.0.0"
+  }
+}
