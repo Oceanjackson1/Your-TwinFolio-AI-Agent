@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+data
+.git
+.gitignore
+.env
+ocr_cache
+vector_stores
+database.sqlite

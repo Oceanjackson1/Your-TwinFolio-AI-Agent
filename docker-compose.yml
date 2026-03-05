@@ -1,0 +1,13 @@
+services:
+  polymarket-ai-agent:
+    build: .
+    container_name: polymarket-ai-agent-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      AGENT_ID: polymarket-ai-agent
+      APP_DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data
+    labels:
+      com.codex.agent_id: polymarket-ai-agent

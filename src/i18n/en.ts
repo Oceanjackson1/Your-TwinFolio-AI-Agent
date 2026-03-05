@@ -83,7 +83,7 @@ export const en = {
   job_ask_price: "Price: $2.99 / mo",
 
   settings_title: "⚙️ Settings & Help",
-  settings_desc: "Command list:\n/context - Manage knowledge base\n/invite - Generate invite code\n/connect - Connect to someone's Book\n/disconnect - Disconnect\n/mybook - View Book status\n/bind - Bind a group partition\n/unbind - Remove the group binding\n/groupstatus - View group status\n/groupsettings - Group settings\n/ask - Ask a question\n/subscribe - Subscribe\n/settings - Language switch\n/help - Help",
+  settings_desc: "Command list:\n/context - Manage knowledge base\n/invite - Generate invite code\n/connect - Connect to someone's Book\n/disconnect - Disconnect\n/mybook - View Book status\n/bind - Bind a group partition\n/unbind - Remove the group binding\n/groupstatus - View group status\n/groupsettings - Group settings\n/ask - Ask a question\n/subscribe - Subscribe\n/version - Runtime identity\n/settings - Language switch\n/help - Help",
 
   btn_context: "📚 Context",
   btn_ask: "💬 Ask AI",
@@ -119,6 +119,8 @@ export const en = {
   citation_mode_off: "Off",
   pdf_received: "PDF '{name}' received, processing...",
   pdf_processed: "PDF '{name}' indexed into partition '{partition}'!",
+  pdf_storage_cos: "Storage: COS uploaded ({url})",
+  pdf_storage_local: "Storage: local path ({path})",
   pdf_no_text: "This PDF still did not yield enough usable text, even after OCR.",
   pdf_progress_extracting: "Extracting the PDF text layer...",
   pdf_progress_rendering: "The text layer is insufficient. Rendering pages and preparing OCR...",
@@ -133,4 +135,5 @@ export const en = {
   switching_lang: "Language switched to English.",
   ask_prompt: "Please send your question to the AI:",
   thinking: "AI is thinking...",
+  version_hint: "Use this output to verify which exact runtime instance you are talking to.",
 };

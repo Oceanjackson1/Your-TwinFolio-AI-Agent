@@ -2,7 +2,7 @@ import { Telegraf, Context, Markup } from 'telegraf';
 import * as dotenv from 'dotenv';
 import { initDb } from './db';
 import {
-    createUser, getUser, subscribeUser, updateUserLanguage, addDocument,
+    createUser, getUser, subscribeUser, updateUserLanguage, addDocumentWithStorage,
     setInviteCode, getInviteCode, resolveInviteCode,
     connectToBook, disconnectFromBook,
     getUserPartitions, getDocumentCountForUser,
@@ -22,14 +22,21 @@ import {
     processAndStoreDocument
 } from './services/pdfManager';
 import { askAiWithContext } from './services/askManager';
+import { getStorageSummary, persistPdfArtifact } from './services/storageManager';
+import * as os from 'os';
 
 dotenv.config();
 
+const agentId = process.env.AGENT_ID || 'your-twinfolio';
+const agentName = process.env.AGENT_NAME || 'TwinFolio';
+const appVersion = process.env.APP_VERSION || 'local-dev';
+const deployEnv = process.env.DEPLOY_ENV || 'production';
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token || token === 'PUT_YOUR_TOKEN_HERE') {
     console.error("Please set TELEGRAM_BOT_TOKEN in .env file.");
     process.exit(1);
 }
+const processStartedAt = new Date();
 
 export interface MyContext extends Context {
     userLang: LangType;
@@ -72,6 +79,7 @@ bot.telegram.setMyCommands([
     { command: 'disconnect', description: '断开连接 / Disconnect' },
     { command: 'mybook', description: '我的Book状态 / My Book status' },
     { command: 'subscribe', description: '订阅 / Subscribe' },
+    { command: 'version', description: '版本 / Runtime identity' },
     { command: 'settings', description: '设置 / Settings' },
     { command: 'help', description: '帮助 / Help' },
 ], { scope: { type: 'all_private_chats' } });
@@ -83,8 +91,44 @@ bot.telegram.setMyCommands([
     { command: 'unbind', description: '解除绑定 / Unbind' },
     { command: 'groupstatus', description: '群聊状态 / Group status' },
     { command: 'groupsettings', description: '群聊设置 / Group settings' },
+    { command: 'version', description: '版本 / Runtime identity' },
     { command: 'help', description: '帮助 / Help' },
 ], { scope: { type: 'all_group_chats' } });
+
+function formatVersionMessage(ctx: MyContext) {
+    const t = getT(ctx.userLang);
+    const runtimeMinutes = Math.max(0, Math.floor((Date.now() - processStartedAt.getTime()) / 60000));
+    const botUsername = cachedBotUsername || process.env.BOT_USERNAME || 'unknown';
+    const linesEn = [
+        'Version Info',
+        `AGENT_ID: ${agentId}`,
+        `AGENT_NAME: ${agentName}`,
+        `BOT_USERNAME: @${botUsername}`,
+        `APP_VERSION: ${appVersion}`,
+        `DEPLOY_ENV: ${deployEnv}`,
+        `HOSTNAME: ${os.hostname()}`,
+        `PID: ${process.pid}`,
+        `STARTED_AT: ${processStartedAt.toISOString()}`,
+        `UPTIME_MIN: ${runtimeMinutes}`,
+        `STORAGE: ${getStorageSummary()}`,
+    ];
+    const linesZh = [
+        '版本信息',
+        `AGENT_ID: ${agentId}`,
+        `AGENT_NAME: ${agentName}`,
+        `BOT_USERNAME: @${botUsername}`,
+        `APP_VERSION: ${appVersion}`,
+        `DEPLOY_ENV: ${deployEnv}`,
+        `HOSTNAME: ${os.hostname()}`,
+        `PID: ${process.pid}`,
+        `STARTED_AT: ${processStartedAt.toISOString()}`,
+        `UPTIME_MIN: ${runtimeMinutes}`,
+        `STORAGE: ${getStorageSummary()}`,
+    ];
+    return ctx.userLang === 'zh'
+        ? `${linesZh.join('\n')}\n\n${t.version_hint}`
+        : `${linesEn.join('\n')}\n\n${t.version_hint}`;
+}
 
 // =====================
 // /start - Dual option
@@ -232,6 +276,10 @@ bot.command('settings', async (ctx) => {
 bot.command('help', async (ctx) => {
     const t = getT(ctx.userLang);
     await ctx.reply(t.settings_desc);
+});
+
+bot.command('version', async (ctx) => {
+    await ctx.reply(formatVersionMessage(ctx));
 });
 
 bot.action('action_switch_lang', async (ctx) => {
@@ -1179,11 +1227,24 @@ bot.on('message', async (ctx, next) => {
                     throw new Error(t.pdf_no_text);
                 }
                 await reportProgress({ stage: 'ocr_complete' }, true);
+                const persisted = await persistPdfArtifact({
+                    buffer,
+                    originalFileName: doc.file_name || 'unknown.pdf',
+                    partitionId: user.activePartitionId,
+                    userId: ctx.from.id,
+                });
                 await processAndStoreDocument(user.activePartitionId, text, {
                     fileId: doc.file_id,
                     fileName: doc.file_name || 'unknown'
                 });
-                await addDocument(doc.file_id, doc.file_name || 'unknown', user.activePartitionId);
+                await addDocumentWithStorage(doc.file_id, doc.file_name || 'unknown', user.activePartitionId, {
+                    storageType: persisted.storageType,
+                    localPath: persisted.localPath,
+                    storageUrl: persisted.storageUrl,
+                });
+                const storageNotice = persisted.storageUrl
+                    ? t.pdf_storage_cos.replace('{url}', persisted.storageUrl)
+                    : t.pdf_storage_local.replace('{path}', persisted.localPath);
                 await safeEditMessageTextOrSend(
                     ctx,
                     ctx.chat.id,
@@ -1191,6 +1252,7 @@ bot.on('message', async (ctx, next) => {
                     t.pdf_processed
                         .replace('{name}', doc.file_name || 'unknown')
                         .replace('{partition}', user.activePartitionId.toString())
+                        + `\n${storageNotice}`
                 );
             } catch (err: any) {
                 console.error("Error processing PDF:", err);
@@ -1229,6 +1291,8 @@ bot.on('message', async (ctx, next) => {
 // =====================
 async function start() {
     await initDb();
+    console.log(`[Bot] Starting agent: ${agentId} (version=${appVersion})`);
+    console.log(`[Bot] Runtime identity: AGENT_NAME=${agentName}, BOT_USERNAME=${process.env.BOT_USERNAME || 'unknown'}, DEPLOY_ENV=${deployEnv}, STORAGE=${getStorageSummary()}`);
     // Fetch bot identity BEFORE launching so @mention detection works immediately
     try {
         const me = await bot.telegram.getMe();

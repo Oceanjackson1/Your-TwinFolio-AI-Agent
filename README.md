@@ -1,238 +1,206 @@
 # Your-TwinFolio-AI-Agent
 
-一个基于 Telegram Bot、PDF 知识库、OCR 与长期记忆的 **AI 数字分身**项目。
+一个基于 Telegram Bot + PDF 知识库 + OCR + 会话记忆的 AI 数字分身项目。
 
-用户可以在私聊中创建自己的 Book、按分区上传 PDF、生成邀请码让别人接入自己的知识库；也可以把 Bot 拉进群聊，让群成员通过 `@Bot`、回复 Bot 或 `/ask` 的方式，基于指定知识分区进行智能问答。
+你可以在私聊中创建自己的 Book（知识库分区）、上传 PDF 并提问；也可以把 Bot 拉进群聊，把某个分区绑定到群里，供成员通过 @Bot、回复 Bot 或 `/ask` 进行问答。
 
----
+## 功能概览
 
-## ✨ 核心功能
+- 多分区知识库
+  - `/context` 创建与切换分区
+  - 每个分区可单独配置：人格（Persona）、追问方式、回复风格、知识范围、引用开关
+- PDF 入库与 OCR
+  - 优先读取 PDF 文本层
+  - 文本层不足时自动执行 OCR（`tesseract.js`）
+  - OCR 支持中英混排，首次会下载并缓存语言模型
+  - 解析过程实时回显进度
+- 私聊问答
+  - 支持基于自己的 Book 提问
+  - 支持通过邀请码连接他人 Book 后提问
+  - 问答会使用近期会话 + 长期摘要记忆
+- 群聊问答
+  - 群管理员使用 `/bind` 将群绑定到指定用户的指定分区
+  - 支持三种触发方式（@Bot、回复 Bot、`/ask`，可配置）
+  - 多人同时提问时可精准 @ 回答提问者
+- 文档存储
+  - 默认本地落盘（`data/uploads`）
+  - 可选上传腾讯云 COS（配置后自动启用）
+- 中英文文案
+  - `/settings` 一键切换中文/英文
 
-### 1. Book 与知识分区
+## 技术栈
 
-- 使用 `/context` 创建和管理知识分区
-- 每个分区可独立配置：
-  - 人格设定（Persona）
-  - 追问方式（直接回答 / 先澄清）
-  - 回复风格（简洁 / 平衡 / 详细）
-  - 知识范围（严格文档 / 文档 + 常识）
-  - 是否展示引用来源
-- 上传 PDF 时写入当前激活分区
+- Runtime: Node.js + TypeScript
+- Bot: Telegraf
+- LLM: DeepSeek Chat（LangChain）
+- DB: SQLite
+- 文档处理: pdf-parse + tesseract.js
+- 索引存储: HNSWLib（LangChain）
+- 国际化: 内置 i18n（zh/en）
 
-### 2. PDF 解析与 OCR
+## 项目结构
 
-- 优先提取 PDF 自带文本层
-- 文本不足时自动走 OCR（基于 `tesseract.js`）
-- 支持中英文混排识别
-- 首次 OCR 会下载并缓存语言模型到 `ocr_cache/`
-- 上传过程中实时回写进度
-
-### 3. 私聊问答
-
-- 用户可直接对自己的 Book 提问
-- 访客通过邀请码连接他人 Book 后可自由提问
-- 有文档的用户无需订阅即可使用问答功能
-- 问答上下文包含：
-  - 文档检索结果（关键词匹配）
-  - 最近会话历史
-  - 长期用户画像与滚动摘要
-- AI 回复限制为纯文本，避免 Markdown 标记干扰
-
-### 4. 群聊问答
-
-- 将 Bot 拉入群聊后，管理员可执行 `/bind` 绑定分区
-- 群聊绑定的是"某个用户的某个知识分区"
-- **@Bot 提问时精准回复提问者**：
-  - Bot 先发送 `@提问者 🤔 Agent 正在思考中...`
-  - AI 生成完毕后更新为 `@提问者\n\n回答内容`
-  - 多人同时提问互不干扰，精准 @ 对应用户
-- 群管理员可通过 `/groupsettings` 调整：
-
-| 设置项 | 选项 |
-|--------|------|
-| 使用权限 | 所有成员 / 仅管理员 |
-| 触发方式 | `@Bot` / `@Bot + 回复` / `@Bot + 回复 + /ask` |
-| 回复风格 | 简洁 / 平衡 / 详细 |
-| 知识范围 | 严格文档 / 文档 + 常识 |
-| 引用来源 | 开启 / 关闭 |
-
-### 5. 邀请码与 Book 共享
-
-- `/invite` 生成自定义邀请码
-- 他人使用 `/connect <邀请码>` 接入你的 Book
-- 支持自定义邀请码内容
-
-### 6. 会话记忆
-
-- 保存最近多轮消息历史
-- 长期用户画像与会话摘要
-- 群聊和私聊分别建立独立 scope
-- 群聊会绑定到 `chatId + owner + participant + partition`
-
----
-
-## 🛠 技术栈
-
-| 类别 | 技术 |
-|------|------|
-| 运行时 | Node.js + TypeScript |
-| Bot 框架 | Telegraf |
-| AI 模型 | DeepSeek Chat (via LangChain) |
-| 数据库 | SQLite |
-| 文档处理 | pdf-parse + tesseract.js |
-| 向量存储 | HNSWLib (LangChain) |
-| 国际化 | 自建 i18n（中/英） |
-
----
-
-## 📁 项目结构
-
-```
+```text
 .
 ├── src/
-│   ├── bot.ts                  # Telegram Bot 入口 & 命令注册
-│   ├── db/                     # SQLite 初始化与数据访问
-│   ├── i18n/                   # 中英文文案
+│   ├── bot.ts                  # Bot 入口、命令注册、群聊触发逻辑
+│   ├── db/
+│   │   ├── index.ts            # SQLite 初始化与迁移
+│   │   └── services.ts         # 数据访问层
+│   ├── i18n/
+│   │   ├── zh.ts               # 中文文案
+│   │   └── en.ts               # 英文文案
 │   └── services/
-│       ├── ai.ts               # LLM 与 embedding 封装
-│       ├── askManager.ts       # 问答主链路（Prompt 构建 + 上下文组装）
-│       ├── contextManager.ts   # 分区管理
-│       ├── memoryManager.ts    # 长期记忆与会话摘要
+│       ├── ai.ts               # LLM 与 Embedding 封装
+│       ├── askManager.ts       # 问答链路（Prompt + 上下文 + 记忆）
+│       ├── contextManager.ts   # 分区与分区设置
+│       ├── memoryManager.ts    # 会话摘要与长期记忆
 │       ├── ocrManager.ts       # OCR 识别
-│       └── pdfManager.ts       # PDF 解析、切块与关键词检索
-├── ocr_cache/                  # OCR 模型缓存（运行时生成）
-├── vector_stores/              # 文档索引（运行时生成）
-└── database.sqlite             # SQLite 数据库（运行时生成）
+│       ├── pdfManager.ts       # PDF 解析、切块、检索
+│       └── storageManager.ts   # 本地/COS 文件持久化
+├── data/                       # 运行时数据目录（可挂载）
+├── Dockerfile
+├── docker-compose.yml
+└── .env.example
 ```
 
----
+## 环境要求
 
-## ⚙️ 环境变量
+- Node.js 20+
+- npm 10+
+- Telegram Bot Token（来自 @BotFather）
+- DeepSeek API Key
 
-复制 `.env.example` 为 `.env`，并填写：
+## 环境变量
+
+复制 `.env.example` 为 `.env`，至少填写以下项：
 
 ```bash
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 DEEPSEEK_API_KEY=your_deepseek_api_key
-OCR_LANGS=eng+chi_sim
 ```
 
-| 变量 | 说明 |
-|------|------|
-| `TELEGRAM_BOT_TOKEN` | 从 @BotFather 获取的 Bot Token |
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 |
-| `OCR_LANGS` | OCR 语言模型，默认 `eng+chi_sim`（英文 + 简体中文） |
+完整变量说明：
 
----
+- 运行身份
+  - `AGENT_ID`：实例唯一标识（建议固定）
+  - `AGENT_NAME`：实例展示名
+  - `BOT_USERNAME`：Bot 用户名（用于运行信息展示）
+  - `APP_VERSION`：版本标记
+  - `DEPLOY_ENV`：环境标记（production/staging 等）
+  - `COMPOSE_PROJECT_NAME`：Docker Compose 项目名
+- 数据路径
+  - `APP_DATA_DIR`：数据根目录（默认 `./data`）
+  - `DB_PATH`：SQLite 文件路径
+  - `VECTOR_STORE_DIR`：向量索引目录
+  - `OCR_CACHE_DIR`：OCR 模型缓存目录
+- OCR
+  - `OCR_LANGS`：语言模型，默认 `eng+chi_sim`
+- 可选：腾讯云 COS
+  - `COS_BUCKET`
+  - `COS_REGION`
+  - `COS_SECRET_ID`
+  - `COS_SECRET_KEY`
+  - `COS_BASE_URL`（可选，自定义访问域名）
 
-## 🚀 快速开始
+## 快速开始
 
-### 1. 安装依赖
+1. 安装依赖
 
 ```bash
 npm install --legacy-peer-deps
 ```
 
-### 2. 启动 Bot
+2. 启动（生产方式）
 
 ```bash
 npm run start
 ```
 
-### 3. 开发模式（热重载）
+3. 开发模式（热重载）
 
 ```bash
 npm run dev
 ```
 
-### ⚠️ 重要：关闭 Group Privacy Mode
+4. Docker 启动
 
-Bot 默认的 Group Privacy 模式会导致无法接收群聊 `@mention` 消息。请务必：
+```bash
+docker compose up -d --build
+docker compose logs -f polymarket-ai-agent
+```
 
-1. 打开 Telegram → 找到 **@BotFather**
-2. 发送 `/mybots` → 选择你的 Bot
-3. **Bot Settings** → **Group Privacy** → **Turn off**
-4. 将 Bot 从群中移除后重新拉入
+## Telegram 侧必做设置
 
-启动日志会自动检测并提醒此设置状态。
+若要在群聊中稳定接收 @mention 与普通消息，请关闭 Group Privacy Mode：
 
----
+1. 打开 @BotFather
+2. `/mybots` 选择你的 Bot
+3. `Bot Settings` → `Group Privacy` → `Turn off`
+4. 将 Bot 移出群后重新拉入
 
-## 📋 Bot 命令
+## 使用流程
 
-### 私聊命令
+1. 私聊 Bot，执行 `/context` 创建分区并设为激活
+2. 直接发送 PDF 文件完成入库
+3. 用 `/ask` 或直接发文本提问
+4. 如需共享知识库：
+   - 拥有者 `/invite` 生成邀请码
+   - 访客 `/connect <邀请码>` 接入后即可提问
+5. 如需群聊使用：
+   - 把 Bot 拉进群
+   - 群管理员执行 `/bind` 选择分区
+   - 群成员按群配置触发提问
 
-| 命令 | 功能 |
-|------|------|
-| `/start` | 开始使用 |
-| `/context` | 管理知识分区（创建、配置、切换） |
-| `/ask <问题>` | 基于知识库提问 |
-| `/invite` | 生成/设置邀请码 |
-| `/connect <邀请码>` | 连接他人的 Book |
-| `/disconnect` | 断开与他人 Book 的连接 |
-| `/mybook` | 查看当前 Book 状态 |
-| `/subscribe` | 订阅入口 |
-| `/settings` | 语言切换（中/英） |
-| `/help` | 显示帮助 |
+## 指令说明
 
-### 群聊命令
+私聊命令：
 
-| 命令 | 功能 |
-|------|------|
-| `/ask <问题>` | 在群里直接提问 |
-| `/bind` | 将当前群绑定到某个知识分区 |
-| `/unbind` | 解除群聊绑定 |
-| `/groupstatus` | 查看当前群绑定状态 |
-| `/groupsettings` | 配置群聊回答方式 |
+- `/start`：开始使用
+- `/context`：管理分区（创建/切换/配置）
+- `/ask <问题>`：基于知识库提问
+- `/invite`：生成或更新邀请码
+- `/connect <邀请码>`：连接他人 Book
+- `/disconnect`：断开连接
+- `/mybook`：查看当前 Book 状态
+- `/subscribe`：开通提问权限（当前为应用内标记）
+- `/version`：查看运行实例标识
+- `/settings`：切换语言
+- `/help`：帮助说明
 
----
+群聊命令：
 
-## 💬 群聊使用方式
+- `/bind`：绑定群聊到某个知识分区（管理员）
+- `/unbind`：解除绑定（管理员）
+- `/groupstatus`：查看群聊配置状态
+- `/groupsettings`：调整触发方式/权限/风格等（管理员）
+- `/ask <问题>`：在允许的触发模式下提问
+- `@Bot <问题>`：@ 触发提问
+- `回复 Bot 消息`：在允许模式下继续追问
 
-### 绑定流程
+## 数据与持久化
 
-1. 在私聊中创建分区并上传 PDF
-2. 将 Bot 拉进群聊
-3. 群管理员执行 `/bind`
-4. 选择一个有文档的分区
-5. 群成员开始提问
+运行后会在 `APP_DATA_DIR` 下生成：
 
-### 提问方式（取决于群设置）
+- `database.sqlite`：业务数据（用户、分区、邀请码、群绑定、记忆等）
+- `vector_stores/`：分区索引
+- `ocr_cache/`：OCR 模型缓存
+- `uploads/`：上传 PDF 本地副本
 
-- `@Bot 你的问题` — @ 提问
-- 回复 Bot 消息继续追问 — 上下文追问
-- `/ask 你的问题` — 命令提问
+建议将 `data/` 作为持久卷保存，避免重启丢失索引与记忆。
 
-### 回复机制
+## 当前实现说明（重要）
 
-当群成员提问时：
-1. Bot 立即回复 `@提问者 🤔 Agent 正在思考中...`
-2. AI 生成完毕后，将消息更新为完整回答并 @ 提问者
-3. 多用户同时提问时，每个回答精准对应各自的提问者
+- Embedding 目前为占位实现（随机向量），语义检索质量有限。
+- 检索主链路当前基于关键词匹配得分（非完整 RAG 语义召回）。
+- `/subscribe` 当前是应用内订阅标记逻辑，未接入真实支付网关。
 
----
+如果你要用于生产环境，建议优先改造：
 
-## 🧠 数据与记忆模型
+1. 接入真实 Embedding API
+2. 增加 rerank/混合检索
+3. 接入真实支付与权限系统
 
-- **ConversationMessages**：保存最近多轮对话消息
-- **ConversationScopes**：保存会话摘要（rolling summary）与长期用户画像
-- 群聊和私聊使用独立的 scope
-- 群聊 scope 绑定维度：`chatId + ownerUserId + participantUserId + partitionId`
+## 许可证
 
----
-
-## 🗺 适合继续迭代的方向
-
-- 更强的文档检索与 rerank（替代纯关键词匹配）
-- 接入真实 Embedding API 替代随机向量
-- 群聊线程级上下文隔离
-- 更细粒度的权限与配额模型
-- Web 管理后台
-- 多模态输入支持（图片、语音）
-- 支付系统集成
-
----
-
-## 📄 许可证
-
-当前仓库未单独声明 License，默认请在团队内部或得到作者授权后使用。
+仓库当前未提供独立 License 文件。若用于团队外分发或商用，请先补充 License 并明确授权范围。

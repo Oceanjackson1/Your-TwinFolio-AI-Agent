@@ -213,7 +213,36 @@ export async function updatePartitionSettings(
 
 export async function addDocument(fileId: string, fileName: string, partitionId: number) {
     const db = getDb();
-    await db.run('INSERT INTO Documents (fileId, fileName, partitionId) VALUES (?, ?, ?)', [fileId, fileName, partitionId]);
+    await db.run(
+        'INSERT INTO Documents (fileId, fileName, storageType, localPath, storageUrl, partitionId) VALUES (?, ?, ?, ?, ?, ?)',
+        [fileId, fileName, 'telegram', null, null, partitionId]
+    );
+}
+
+interface DocumentStorageMeta {
+    storageType?: 'telegram' | 'local' | 'cos';
+    localPath?: string | null;
+    storageUrl?: string | null;
+}
+
+export async function addDocumentWithStorage(
+    fileId: string,
+    fileName: string,
+    partitionId: number,
+    storage: DocumentStorageMeta
+) {
+    const db = getDb();
+    await db.run(
+        'INSERT INTO Documents (fileId, fileName, storageType, localPath, storageUrl, partitionId) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+            fileId,
+            fileName,
+            storage.storageType || 'telegram',
+            storage.localPath || null,
+            storage.storageUrl || null,
+            partitionId,
+        ]
+    );
 }
 
 export async function getPartitionDocumentCount(partitionId: number): Promise<number> {

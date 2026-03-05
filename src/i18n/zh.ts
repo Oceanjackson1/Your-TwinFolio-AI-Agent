@@ -83,7 +83,7 @@ export const zh = {
     job_ask_price: "价格: $2.99 / 月",
 
     settings_title: "⚙️ 设置与帮助",
-    settings_desc: "指令列表:\n/context - 管理知识库\n/invite - 生成邀请码\n/connect - 连接他人 Book\n/disconnect - 断开连接\n/mybook - 查看 Book 状态\n/bind - 群聊绑定分区\n/unbind - 解除群聊绑定\n/groupstatus - 查看群状态\n/groupsettings - 群聊设置\n/ask - 提问\n/subscribe - 订阅服务\n/settings - 语言切换\n/help - 帮助",
+    settings_desc: "指令列表:\n/context - 管理知识库\n/invite - 生成邀请码\n/connect - 连接他人 Book\n/disconnect - 断开连接\n/mybook - 查看 Book 状态\n/bind - 群聊绑定分区\n/unbind - 解除群聊绑定\n/groupstatus - 查看群状态\n/groupsettings - 群聊设置\n/ask - 提问\n/subscribe - 订阅服务\n/version - 运行时身份\n/settings - 语言切换\n/help - 帮助",
 
     btn_context: "📚 知识库",
     btn_ask: "💬 提问",
@@ -119,6 +119,8 @@ export const zh = {
     citation_mode_off: "关闭",
     pdf_received: "已收到 PDF 文件「{name}」，正在解析入库中...",
     pdf_processed: "PDF「{name}」已成功入库到分区「{partition}」！",
+    pdf_storage_cos: "存储：已上传 COS（{url}）",
+    pdf_storage_local: "存储：本地路径（{path}）",
     pdf_no_text: "这个 PDF 即使经过 OCR 后，仍然没有提取到足够可用的文本。",
     pdf_progress_extracting: "正在提取 PDF 文本层...",
     pdf_progress_rendering: "文本层不足，正在渲染页面并准备 OCR...",
@@ -133,4 +135,5 @@ export const zh = {
     switching_lang: "语言已切换为中文。",
     ask_prompt: "请发送您想向 AI 提问的内容：",
     thinking: "AI 正在思考中...",
+    version_hint: "可用这段信息确认当前会话连接到的具体运行实例。",
 };

@@ -34,7 +34,12 @@ interface ParsePdfOptions {
     onProgress?: ((event: PdfParseProgressEvent) => Promise<void> | void) | undefined;
 }
 
-const VECTOR_STORE_DIR = path.join(__dirname, '../../vector_stores');
+const APP_DATA_DIR = process.env.APP_DATA_DIR
+    ? path.resolve(process.env.APP_DATA_DIR)
+    : path.join(__dirname, '../../data');
+const VECTOR_STORE_DIR = process.env.VECTOR_STORE_DIR
+    ? path.resolve(process.env.VECTOR_STORE_DIR)
+    : path.join(APP_DATA_DIR, 'vector_stores');
 
 if (!fs.existsSync(VECTOR_STORE_DIR)) {
     fs.mkdirSync(VECTOR_STORE_DIR, { recursive: true });

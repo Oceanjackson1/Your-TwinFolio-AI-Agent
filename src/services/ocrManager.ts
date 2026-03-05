@@ -2,7 +2,12 @@ const { createWorker, PSM } = require('tesseract.js');
 import * as fs from 'fs';
 import * as path from 'path';
 
-const OCR_CACHE_DIR = path.join(__dirname, '../../ocr_cache');
+const APP_DATA_DIR = process.env.APP_DATA_DIR
+    ? path.resolve(process.env.APP_DATA_DIR)
+    : path.join(__dirname, '../../data');
+const OCR_CACHE_DIR = process.env.OCR_CACHE_DIR
+    ? path.resolve(process.env.OCR_CACHE_DIR)
+    : path.join(APP_DATA_DIR, 'ocr_cache');
 const OCR_LANGS = (process.env.OCR_LANGS || 'eng+chi_sim').split('+').filter(Boolean).join('+');
 const OCR_WORKER_PATH = require.resolve('tesseract.js/src/worker-script/node/index.js');
 

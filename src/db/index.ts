@@ -1,12 +1,23 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
+import fs from 'fs';
 
 let db: Database | null = null;
 
+const APP_DATA_DIR = process.env.APP_DATA_DIR
+  ? path.resolve(process.env.APP_DATA_DIR)
+  : path.join(__dirname, '../../data');
+
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.join(APP_DATA_DIR, 'database.sqlite');
+
 export async function initDb() {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+
   db = await open({
-    filename: path.join(__dirname, '../../database.sqlite'),
+    filename: DB_PATH,
     driver: sqlite3.Database
   });
 
@@ -31,6 +42,10 @@ export async function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fileId TEXT NOT NULL,
       fileName TEXT,
+      storageType TEXT DEFAULT 'telegram',
+      localPath TEXT,
+      storageUrl TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
       partitionId INTEGER NOT NULL,
       FOREIGN KEY(partitionId) REFERENCES Partitions(id)
     );
@@ -102,6 +117,27 @@ export async function initDb() {
     await db.exec(`UPDATE InviteCodes SET code = UPPER(TRIM(code)) WHERE code IS NOT NULL`);
   } catch (e: any) {
     console.warn("Invite code normalization skipped:", e?.message || e);
+  }
+
+  const documentMigrations = [
+    `ALTER TABLE Documents ADD COLUMN storageType TEXT DEFAULT 'telegram'`,
+    `ALTER TABLE Documents ADD COLUMN localPath TEXT`,
+    `ALTER TABLE Documents ADD COLUMN storageUrl TEXT`,
+    `ALTER TABLE Documents ADD COLUMN createdAt TEXT DEFAULT (datetime('now'))`,
+  ];
+
+  for (const statement of documentMigrations) {
+    try {
+      await db.exec(statement);
+    } catch (e: any) {
+      // Column already exists, ignore.
+    }
+  }
+
+  try {
+    await db.exec(`UPDATE Documents SET storageType = COALESCE(storageType, 'telegram')`);
+  } catch (e: any) {
+    console.warn("Document storage normalization skipped:", e?.message || e);
   }
 
   const groupBindingMigrations = [
